@@ -181,8 +181,10 @@ impl Object {
         let method = Method::PUT;
         let resource = CanonicalizedResource::new(format!("/{}/{}", bucket.as_str(), self.path));
 
-        let header_map = client.authorization(method, resource)?;
-
+        let mut header_map = client.authorization(method, resource)?;
+        if content.len() == 0 {
+            header_map.insert("Content-Length", 0.into());
+        }
         let response = reqwest::Client::new()
             .put(url)
             .headers(header_map)
@@ -342,5 +344,13 @@ mod tests {
         let object = Object::new("abc\\efg.txt");
         let url = object.to_url(&bucket).to_string();
         assert!(url.contains("\\") || url.contains("%5C"));
+    }
+
+    #[tokio::test]
+    async fn test_upload_empty_file() {
+        let object = Object::new("empty.txt");
+
+        let info = object.upload(vec![], &set_client()).await;
+        assert!(info.is_ok())
     }
 }
