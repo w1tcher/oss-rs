@@ -134,9 +134,11 @@ impl Object {
     }
 
     pub fn to_url(&self, bucket: &Bucket) -> Url {
-        let mut url = bucket.to_url();
-        url.path_segments_mut().unwrap().push(&self.path);
-        url
+        let url = bucket.to_url();
+        let path = form_urlencoded::Serializer::new(String::new()).append_key_only(&self.path).finish();
+        let mut url = url.to_string();
+        url.push_str(&path);
+        Url::parse(&url).unwrap()
     }
 
     pub async fn get_info(&self, client: &Client) -> Result<ObjectInfo, OssError> {
@@ -343,7 +345,16 @@ mod tests {
         let bucket = Bucket::new("honglei123", EndPoint::CN_SHANGHAI);
         let object = Object::new("abc\\efg.txt");
         let url = object.to_url(&bucket).to_string();
-        assert!(url.contains("\\") || url.contains("%5C"));
+        assert!(url.eq("https://honglei123.oss-cn-shanghai.aliyuncs.com/abc%5Cefg.txt"));
+    }
+
+    #[tokio::test]
+    async fn test_to_url2() {
+        let bucket = Bucket::new("honglei123", EndPoint::CN_SHANGHAI);
+        let object = Object::new("abc+efg.txt");
+        let url = object.to_url(&bucket).to_string();
+        println!("{}", url);
+        assert!(url.eq("https://honglei123.oss-cn-shanghai.aliyuncs.com/abc%2Befg.txt"));
     }
 
     #[tokio::test]
